@@ -28,7 +28,6 @@ app.get("/api/contacts", (req, res) => {
 });
 
 app.get("/api/contacts/:id", (req, res) => {
-  const id = Number(req.params.id);
   Contact.findById(req.params.id)
     .then((contact) => {
       if (contact) {
@@ -49,20 +48,16 @@ app.get("/info", (req, res) => {
   res.send(`Phonebook has info for ${totalContacts} people <br/> ${DATE}`);
 });
 
-app.delete("/api/contacts/:id", (req, res) => {
-  const id = Number(req.params.id);
+app.delete("/api/contacts/:id", (req, res, next) => {
   Contact.findByIdAndDelete(req.params.id)
     .then(() => {
       res.status(204).end();
     })
-    .catch((err) => {
-      console.log(err);
-    });
+    .catch((err) => next(err));
 });
 
 app.post("/api/contacts", (req, res) => {
   const body = req.body;
-  // let contactExist = "";
 
   if (!body.name) {
     res.status(400).json({ error: "Name cannot be empty" });
@@ -73,15 +68,6 @@ app.post("/api/contacts", (req, res) => {
     res.status(400).json({ error: "Number cannot be empty" });
     return;
   }
-
-  // Contact.find({ name: body.name }).then((contact) => {
-  //   contactExist = contact.name;
-  // });
-  //
-  // if (contactExist) {
-  //   res.status(400).json({ error: "Name already exists" });
-  //   return;
-  // }
 
   const contact = new Contact({
     name: body.name,
@@ -98,6 +84,36 @@ app.post("/api/contacts", (req, res) => {
       res.status(500).end();
     });
 });
+
+app.put("/api/contacts/:id", (req, res, next) => {
+  const body = req.body;
+
+  const contact = {
+    number: body.number,
+  };
+  Contact.findByIdAndUpdate(req.params.id, contact, { new: true })
+    .then((result) => {
+      res.status(200).json(result);
+    })
+    .catch((err) => next(err));
+});
+
+// Middleware de manejo de errores
+const errorHandler = (err, req, res, next) => {
+  console.log(err.message);
+
+  if (err.name === "CastError") {
+    res.status(400).send({ error: "malformed id" });
+  }
+
+  if (err.name === "") {
+    return res.status(400).send({ error: "Name cannot be empty" });
+  }
+
+  next(err);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
