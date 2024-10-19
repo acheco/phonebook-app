@@ -4,6 +4,7 @@ const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
 const Contact = require("./models/Contact");
+const assert = require("node:assert");
 
 // Middlewares
 app.use(express.static("dist"));
@@ -59,12 +60,12 @@ app.delete("/api/contacts/:id", (req, res, next) => {
 app.post("/api/contacts", (req, res) => {
   const body = req.body;
 
-  if (!body.name) {
+  if (body.name === undefined || body.name === null || body.name === "") {
     res.status(400).json({ error: "Name cannot be empty" });
     return;
   }
 
-  if (!body.number) {
+  if (body.number === undefined || body.number === null || body.number === "") {
     res.status(400).json({ error: "Number cannot be empty" });
     return;
   }
@@ -80,18 +81,29 @@ app.post("/api/contacts", (req, res) => {
       res.status(201).json(result);
     })
     .catch((err) => {
-      console.log(err.message);
-      res.status(500).end();
+      // Usar el validador customizado de mongoose
+      if (err.name === "ValidationError") {
+        const errMessage = Object.values(err.errors).map((e) => e.message);
+        res.status(400).json({ error: errMessage });
+      } else {
+        res.status(500).json({ error: "Server error" }).end();
+      }
     });
 });
 
 app.put("/api/contacts/:id", (req, res, next) => {
-  const body = req.body;
+  const { number } = req.body;
 
-  const contact = {
-    number: body.number,
-  };
-  Contact.findByIdAndUpdate(req.params.id, contact, { new: true })
+  if (!number) {
+    res.status(400).json({ error: "Number cannot be empty" });
+    return;
+  }
+
+  Contact.findByIdAndUpdate(
+    req.params.id,
+    { number },
+    { new: true, runValidators: true, context: "query" },
+  )
     .then((result) => {
       res.status(200).json(result);
     })
@@ -103,11 +115,9 @@ const errorHandler = (err, req, res, next) => {
   console.log(err.message);
 
   if (err.name === "CastError") {
-    res.status(400).send({ error: "malformed id" });
-  }
-
-  if (err.name === "") {
-    return res.status(400).send({ error: "Name cannot be empty" });
+    return res.status(400).send({ error: "malformed id" });
+  } else if (err.name === "ValidationError") {
+    return res.status(400).json({ error: err.message });
   }
 
   next(err);

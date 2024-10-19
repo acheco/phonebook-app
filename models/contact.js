@@ -13,8 +13,21 @@ mongoose
 
 //  Definición del schema para los contactos
 const contactSchema = new mongoose.Schema({
-  name: { type: String },
-  number: { type: String },
+  name: {
+    type: String,
+    minLength: [3, "Name must be at least 3 characters"],
+  },
+  number: {
+    type: String,
+    // Validación customizada
+    validate: {
+      validator: (v) => {
+        return /\d{3}-\d{3}-\d{4}/.test(v);
+      },
+      message: (props) => `${props.value} is not a valid phone number!`, // Usar props.value para obtener el valor
+    },
+    required: [true, "Please enter a valid phone number"], // Mensaje de error si el campo es requerido
+  },
 });
 
 // Modificando el Schema
