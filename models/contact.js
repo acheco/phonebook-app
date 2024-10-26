@@ -22,6 +22,7 @@ const contactSchema = new mongoose.Schema({
     // Validación customizada
     validate: {
       validator: (v) => {
+        // Validar formato de número de teléfono
         return /\d{3}-\d{3}-\d{4}/.test(v);
       },
       message: (props) => `${props.value} is not a valid phone number!`, // Usar props.value para obtener el valor
