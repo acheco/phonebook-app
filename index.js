@@ -3,12 +3,12 @@ const express = require("express");
 const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
-const Contact = require("./models/Contact");
-const assert = require("node:assert");
+const Contact = require("./models/contact");
+// const assert = require("node:assert");
 
 // Middlewares
 app.use(express.static("dist"));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended: true}));
 app.use(express.json());
 app.use(cors());
 
@@ -44,9 +44,14 @@ app.get("/api/contacts/:id", (req, res) => {
 });
 
 app.get("/info", (req, res) => {
-  const totalContacts = contacts.length;
+  let totalContacts = 0;
   const DATE = new Date();
-  res.send(`Phonebook has info for ${totalContacts} people <br/> ${DATE}`);
+  Contact.estimatedDocumentCount().then(count => {
+    totalContacts = count;
+    res.send(`Phonebook has info for ${totalContacts} people <br/> ${DATE}`);
+  }).catch((e) => {
+    res.status(500).end({error: e.message});
+  })
 });
 
 app.delete("/api/contacts/:id", (req, res, next) => {
@@ -61,12 +66,12 @@ app.post("/api/contacts", (req, res) => {
   const body = req.body;
 
   if (body.name === undefined || body.name === null || body.name === "") {
-    res.status(400).json({ error: "Name cannot be empty" });
+    res.status(400).json({error: "Name cannot be empty"});
     return;
   }
 
   if (body.number === undefined || body.number === null || body.number === "") {
-    res.status(400).json({ error: "Number cannot be empty" });
+    res.status(400).json({error: "Number cannot be empty"});
     return;
   }
 
@@ -84,25 +89,25 @@ app.post("/api/contacts", (req, res) => {
       // Usar el validador customizado de mongoose
       if (err.name === "ValidationError") {
         const errMessage = Object.values(err.errors).map((e) => e.message);
-        res.status(400).json({ error: errMessage });
+        res.status(400).json({error: errMessage});
       } else {
-        res.status(500).json({ error: "Server error" }).end();
+        res.status(500).json({error: "Server error"}).end();
       }
     });
 });
 
 app.put("/api/contacts/:id", (req, res, next) => {
-  const { number } = req.body;
+  const {number} = req.body;
 
   if (!number) {
-    res.status(400).json({ error: "Number cannot be empty" });
+    res.status(400).json({error: "Number cannot be empty"});
     return;
   }
 
   Contact.findByIdAndUpdate(
     req.params.id,
-    { number },
-    { new: true, runValidators: true, context: "query" },
+    {number},
+    {new: true, runValidators: true, context: "query"},
   )
     .then((result) => {
       res.status(200).json(result);
@@ -115,9 +120,9 @@ const errorHandler = (err, req, res, next) => {
   console.log(err.message);
 
   if (err.name === "CastError") {
-    return res.status(400).send({ error: "malformed id" });
+    return res.status(400).send({error: "malformed id"});
   } else if (err.name === "ValidationError") {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({error: err.message});
   }
 
   next(err);
